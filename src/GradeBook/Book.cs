@@ -1,41 +1,72 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace GradeBook
 {
-    public class Book
+    public interface IBook
     {
-        public delegate void GradeAddedDelegate(object sender, EventArgs args);
+        void AddGrade(double grade);
+        Statistics GetStats();
+        string Name { get; }
+        event InMemoryBook.GradeAddedDelegate GradeAdded;
+    }   
+    public abstract class Book : NamedObject, IBook
+    {
+        public Book(string name) : base(name) { }
 
-        public Book(string name)
+        public abstract event InMemoryBook.GradeAddedDelegate GradeAdded;
+        public abstract void AddGrade(double grade);
+        public abstract Statistics GetStats();
+    }
+
+    public class DiskBook : Book
+    {
+        public DiskBook(string name) : base(name){}
+
+        public override event InMemoryBook.GradeAddedDelegate GradeAdded;
+
+        public override void AddGrade(double grade)
+        {
+           using(var writer = File.AppendText($"{Name}.txt"))
+           {
+               writer.WriteLine(grade);
+               if(GradeAdded != null){
+                   GradeAdded(this, new EventArgs());
+               }
+           }
+        }
+
+        public override Statistics GetStats()
+        {
+            var result = new Statistics();
+            using(var reader = File.OpenText($"{Name}.txt"))
+            {
+               var line = reader.ReadLine();
+               while(line != null)
+               {
+                   var number = double.Parse(line);
+                   result.Add(number);
+                   line = reader.ReadLine();
+               }
+            }
+            return result;
+        }
+    }
+
+    public class InMemoryBook : Book
+    {
+        public InMemoryBook(string name) : base(name)
         {
             grades = new List<double>();
             Name = name;
         }
-
+        public delegate void GradeAddedDelegate(object sender, EventArgs args);
         private List<double> grades;
         public string name;
         public const string CATEGORY = "Science";
-        public string Name
-        {
-            get
-            {
-                return name;
-            }
-            set
-            {
-                if(!String.IsNullOrEmpty(value))
-                {
-                    name = value;
-                }
-                else 
-                {
-                    throw new ArgumentException($"Invalid {nameof(value)} ");
-                }
-            }
-        }
         
-        public void AddGrade(double grade)
+        public override void AddGrade(double grade)
         {
             if(grade <= 100 && grade >= 0) 
             {
@@ -51,43 +82,16 @@ namespace GradeBook
             }
         }
 
-        public event GradeAddedDelegate GradeAdded;
+        public override event GradeAddedDelegate GradeAdded;
 
-        public Statistics GetStats()
+        public override Statistics GetStats()
         {
             var results = new Statistics();
-            results.Average = 0.0;
-            results.High = double.MinValue;
-            results.Low = double.MaxValue;
 
             for(var index = 0; index < grades.Count; index++)
             {
-                results.Low = Math.Min(grades[index], results.Low);
-                results.High = Math.Max(grades[index], results.High);
-                results.Average += grades[index];   
-            }
-            
-            results.Average /= grades.Count;
-            
-            switch (results.Average)
-            {
-                case var d when d >= 90.0:
-                results.Letter = 'A';
-                break;
-                case var d when d >= 80.0:
-                results.Letter = 'B';
-                break;
-                case var d when d >= 70.0:
-                results.Letter = 'C';
-                break;
-                case var d when d >= 60.0:
-                results.Letter = 'D';
-                break;
-
-                default:
-                    results.Letter = 'F';
-                    break;
-            }
+                results.Add(grades[index]);
+            }  
 
             return results;
         }

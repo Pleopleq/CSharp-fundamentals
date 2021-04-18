@@ -7,15 +7,25 @@ namespace GradeBook
     {
         static void Main(string[] args)
         {
-            var book = new Book("Felix GradeBook");
-            book.GradeAdded += OnGradeAdded;          
+            IBook book = new DiskBook("Felix GradeBook");
+            book.GradeAdded += OnGradeAdded;
 
+            EnterGrades(book);
+
+            var stats = book.GetStats();
+            Console.WriteLine($"The average grade is {stats.Average:N1}");
+            Console.WriteLine($"The lowest grade is {stats.Low} and the highest grade is {stats.High}");
+            Console.WriteLine($"The letter grade is {stats.Letter}");
+        }
+
+        private static void EnterGrades(IBook book)
+        {
             while (true)
             {
                 Console.WriteLine("Enter a grade or 'Q' to exit");
                 var input = Console.ReadLine();
-                
-                if(input == "q")
+
+                if (input == "q")
                 {
                     break;
                 }
@@ -29,7 +39,7 @@ namespace GradeBook
                 {
                     Console.WriteLine(ex.Message);
                 }
-                catch(FormatException ex)
+                catch (FormatException ex)
                 {
                     Console.WriteLine(ex.Message);
                 }
@@ -37,14 +47,8 @@ namespace GradeBook
                 {
                     Console.WriteLine("*****");
                 }
-                
-            }
 
-            var stats = book.GetStats();
-            Console.WriteLine(Book.CATEGORY);
-            Console.WriteLine($"The average grade is {stats.Average:N1}");
-            Console.WriteLine($"The lowest grade is {stats.Low} and the highest grade is {stats.High}");
-            Console.WriteLine($"The letter grade is {stats.Letter}");
+            }
         }
 
         static void OnGradeAdded(object sender, EventArgs e)
